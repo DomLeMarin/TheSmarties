@@ -7,86 +7,115 @@ import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 contract PollutionMonitor is usingOraclize {
     event newValueQuery(string description); // used for showing in the event log
     event Log(string value);
+    event PollutionAlert(string location);
     
     string[3] regions = ["east", "middle", "west"];
     
-    struct answer{
-        // uint sensor 1,2,3
-        // uint polution;
-    }
+    SensorData[] public sensorData;
+    bool continuousMonitoring = false;
+    uint triggerLevel = 25;
     
-    struct sensorData{
+    struct SensorData{
+        bytes32 queryId;
         string location;
-        string polution;
+        string pollution;
         string URL;
         address owner;
     }
     
-    uint nofsensors = 0;
-    
-    sensorData[3] sensors;
-    
-    function PollutionMonitor() payable{
+    function PollutionMonitor() public payable{
+        sensorData.push(SensorData({
+            queryId: 0,
+            location: "east",
+            pollution: "N.A",
+            URL: "json(http://178.196.11.89:8080/arduino/sensor/1).sensor",
+            owner: msg.sender
+        }));
+        sensorData.push(SensorData({
+            queryId: 0,
+            location: "middle",
+            pollution: "N.A",
+            URL: "json(http://178.196.11.89:8080/arduino/sensor/2).sensor",
+            owner: msg.sender
+        }));
+        sensorData.push(SensorData({
+            queryId: 0,
+            location: "west",
+            pollution: "N.A",
+            URL: "json(http://178.196.11.89:8080/arduino/sensor/3).sensor",
+            owner: msg.sender
+        }));
+        
         update(false);
     }
     
-    function addSensor(string location, string URL){
+    function addSensor(string loc, string URLName) payable {
         Log("Adding Sensor...");
-        if (!stringsEqual(location, regions[0]) && !stringsEqual(location,regions[1]) && !stringsEqual(location,regions[2])) throw;
-        address owner = msg.sender;
-        Log("Owner successfully assigned.");
-        sensors[nofsensors] = sensorData(location, "", URL, owner);
-        Log("New sensor created.");
-        nofsensors++;
+        sensorData.push(SensorData({
+            queryId: 0,
+            location: loc,
+            pollution: "N.A",
+            URL: URLName,
+            owner: msg.sender
+        }));
         Log("Sensor added successfully!");
     }
     
-    function getPollution(uint sensor) /*returns (string polution)*/ {
+    function getPollution(uint sensorIndex) public payable {
         Log("Getting pollution...");
-        Log(sensors[sensor].polution);
-        //return sensors[sensor].polution;
+        Log(sensorData[sensorIndex].pollution);
     }
     
-    function getPollution(string location) /*returns (string polution)*/{
-        Log("Getting pollution...");
-        for (uint i=0; i<nofsensors; i++){
-            if (stringsEqual(sensors[i].location, location)) Log(sensors[i].polution);//return sensors[i].polution;
+    function getAveragePollution(string location) public payable {
+        Log("Getting average pollution...");
+        uint nLocation = 0;
+        uint total = 0;
+        for (uint i=0; i<sensorData.length; i++){
+            if (stringsEqual(sensorData[i].location, location)) {
+                total += stringToUint(sensorData[i].pollution);
+                nLocation++;
+            }
         }
+        uint average = total/nLocation;
+        Log(appendUintToString(location, average));
     }
     
-    function getMap() payable {
-        Log("Getting map...");
-        Log(sensors[indexForLocation("east")].polution);
-        Log(sensors[indexForLocation("middle")].polution);
-        Log(sensors[indexForLocation("west")].polution);
+    
+    function startMonitoring() public payable {
+        continuousMonitoring = true;
     }
     
-    function indexForLocation(string location) returns (uint index){
-        Log("Getting index for location...");
-        for (uint i=0; i<nofsensors; i++){
-            if (stringsEqual(sensors[i].location, location)) return i;
-        }
+    function stopMonitoring() public payable {
+        continuousMonitoring = false;
     }
     
-    function startMonitoring(){
-        update(false);
-    }
-    
-    function update(bool useDelay) {
+    function update(bool useDelay) payable {
         Log("Updating...");
-        if (useDelay)
-            oraclize_query(5, "URL", "json(http://178.196.11.89:8080/arduino/switchOn/18).sensor");
-        else
-            oraclize_query("URL", "json(http://178.196.11.89:8080/arduino/switchOn/18).sensor");
+        if (useDelay) {
+            for (uint i=0; i<sensorData.length; i++) {
+                sensorData[i].queryId = oraclize_query(5, "URL", sensorData[i].URL);
+            }
+        }
+        else {
+             for (uint j=0; j<sensorData.length; j++) {
+                sensorData[j].queryId = oraclize_query("URL", sensorData[j].URL);
+            } 
+        }
     }
     
     function __callback(bytes32 myid, string result) {
         if (msg.sender != oraclize_cbAddress()) throw;
         Log(result);
-        sensors[0].polution = result;
-        sensors[1].polution = result;
-        sensors[2].polution = result;
-        update(true);
+         for (uint j=0; j<sensorData.length; j++) {
+             if (sensorData[j].queryId == myid) {
+                sensorData[j].pollution = result;
+                if (stringToUint(result) > triggerLevel) {
+                    PollutionAlert(sensorData[j].location);
+                }
+             }
+        }
+        if (continuousMonitoring)
+            update(true);
     }
     
     function stringsEqual(string memory _a, string memory _b) internal returns (bool) {
@@ -100,9 +129,55 @@ contract PollutionMonitor is usingOraclize {
                 return false;
         return true;
     }
-        
-    function helloWorld(){
-        Log("HelloWorld");
+    
+    function stringToUint(string s) constant returns (uint result) {
+        bytes memory b = bytes(s);
+        uint i;
+        result = 0;
+        for (i = 0; i < b.length; i++) {
+            uint c = uint(b[i]);
+            if (c >= 48 && c <= 57) {
+                result = result * 10 + (c - 48);
+            }
+        }
     }
+    
+    function appendUintToString(string inStr, uint v) constant returns (string str) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(48 + remainder);
+        }
+        bytes memory inStrb = bytes(inStr);
+        bytes memory s = new bytes(inStrb.length + i + 1);
+        uint j;
+        for (j = 0; j < inStrb.length; j++) {
+            s[j] = inStrb[j];
+        }
+        for (j = 0; j <= i; j++) {
+            s[j + inStrb.length] = reversed[i - j];
+        }
+        str = string(s);
+    }
+    
+    function uintToString(uint v) constant returns (string str) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(48 + remainder);
+        }
+        bytes memory s = new bytes(i + 1);
+        for (uint j = 0; j <= i; j++) {
+            s[j] = reversed[i - j];
+        }
+        str = string(s);
+    }
+        
 }
  
