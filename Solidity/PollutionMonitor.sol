@@ -13,7 +13,7 @@ contract PollutionMonitor is usingOraclize {
     
     SensorData[] public sensorData;
     bool continuousMonitoring = false;
-    uint triggerLevel = 25;
+    uint triggerLevel = 20;
     
     struct SensorData{
         bytes32 queryId;
@@ -24,6 +24,10 @@ contract PollutionMonitor is usingOraclize {
     }
     
     function PollutionMonitor() public payable{
+        
+    }
+    
+    function initialize() public payable{
         sensorData.push(SensorData({
             queryId: 0,
             location: "east",
@@ -45,7 +49,7 @@ contract PollutionMonitor is usingOraclize {
             URL: "json(http://178.196.11.89:8080/arduino/sensor/3).sensor",
             owner: msg.sender
         }));
-        
+        Log("Sensor added successfully!");
         update(false);
     }
     
@@ -83,6 +87,7 @@ contract PollutionMonitor is usingOraclize {
     
     function startMonitoring() public payable {
         continuousMonitoring = true;
+        update(true);
     }
     
     function stopMonitoring() public payable {
@@ -94,12 +99,13 @@ contract PollutionMonitor is usingOraclize {
         if (useDelay) {
             for (uint i=0; i<sensorData.length; i++) {
                 sensorData[i].queryId = oraclize_query(5, "URL", sensorData[i].URL);
+                Log("Sensor successfully queried 1...");
             }
-        }
-        else {
+        } else {
              for (uint j=0; j<sensorData.length; j++) {
                 sensorData[j].queryId = oraclize_query("URL", sensorData[j].URL);
-            } 
+                Log("Sensor successfully queried 2...");
+            }
         }
     }
     
@@ -180,4 +186,3 @@ contract PollutionMonitor is usingOraclize {
     }
         
 }
- 
