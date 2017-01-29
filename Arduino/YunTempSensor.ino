@@ -7,7 +7,9 @@
 YunServer server;
 String readString; 
 const int ledPin = 13; // the pin that the LED is attached to
-const int sensorPin = 0;
+const int sensorPin1 = 0;
+const int sensorPin2 = 1;
+const int sensorPin3 = 2;
 
 void setup() {
   
@@ -21,7 +23,9 @@ void setup() {
 
   // initialize the LED pin as an output:
   pinMode(ledPin, OUTPUT);
-  pinMode(sensorPin, INPUT);
+  pinMode(sensorPin1, INPUT);
+  pinMode(sensorPin2, INPUT);
+  pinMode(sensorPin3, INPUT);
   
 }
 
@@ -33,14 +37,10 @@ void loop() {
 
   if (client) {
     //Read temperature
-    int val = analogRead(sensorPin);
-    float mv = ( val/1024.0)*5000; 
-    float celsius = (mv-600)/10;
-    
+    float celsius = process(client);
     server.print("{\"sensor\":");
     server.print(celsius);
     server.print("}");
-    process(client);
     // Close connection and free resources.
     client.stop();
   }
@@ -48,18 +48,36 @@ void loop() {
 }
 
 
-void process(YunClient client) {
+float process(YunClient client) {
   
   String command = client.readStringUntil('/');
   // Check if the url contains the word "on"
   int value = client.parseInt();
-  if (command == "switchOn") {
-    digitalWrite(ledPin, value); // Change the intensity
+  int val = 0;
+  if (command == "sensor") {
+    //Read temperature
+    switch(value) {
+      case 0:
+        digitalWrite(ledPin, LOW);
+      case 1:
+        val = analogRead(sensorPin1);
+        digitalWrite(ledPin, HIGH);
+        break;
+      case 2:
+        val = analogRead(sensorPin2);
+        digitalWrite(ledPin, HIGH);
+        break;
+      case 3:
+        val = analogRead(sensorPin3);
+        digitalWrite(ledPin, HIGH);
+        break;
+      default:
+        digitalWrite(ledPin, LOW);
+        break;
+    }
+    float mv = ( val/1024.0)*5000; 
+    float celsius = (mv-600)/10;
   } 
-  // Check if the url contains the word "off"
-  if (command == "switchOff") {
-    digitalWrite(ledPin, LOW); // Change the intensity
-  }
   
 }
 
