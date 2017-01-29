@@ -10,6 +10,7 @@ const int ledPin = 13; // the pin that the LED is attached to
 const int sensorPin1 = 0;
 const int sensorPin2 = 1;
 const int sensorPin3 = 2;
+int val = 0;
 
 void setup() {
   
@@ -53,7 +54,7 @@ float process(YunClient client) {
   String command = client.readStringUntil('/');
   // Check if the url contains the word "on"
   int value = client.parseInt();
-  int val = 0;
+  
   if (command == "sensor") {
     //Read temperature
     switch(value) {
@@ -65,7 +66,7 @@ float process(YunClient client) {
         break;
       case 2:
         val = analogRead(sensorPin2);
-        digitalWrite(ledPin, HIGH);
+        digitalWrite(ledPin, LOW);
         break;
       case 3:
         val = analogRead(sensorPin3);
@@ -76,7 +77,8 @@ float process(YunClient client) {
         break;
     }
     float mv = ( val/1024.0)*5000; 
-    float celsius = (mv-600)/10;
+    float celsius = (mv-550)/10;
+    return celsius;
   } 
   
 }
