@@ -24,8 +24,9 @@
     <br>
   	</div>
 	<div class="jumbotron">
-		Add sensor:
-		    <input type="text" id="addSensor">
+		<h4>Add sensor:<h4>
+		Provide Location: <input type="text" id="addSensorLocation">
+		Provide URL: <input type="text" id="addSensorURL">
             <button onclick="addSensor()">Add Sensor</button>
 	</div>
 	
@@ -41,20 +42,11 @@
             <button onclick="getAveragePollution()">Get Average Polution</button>
 	</div>
 	
-	<div class="jumbotron">
-		Get Map:
-		    <input type="text" id="getMap">
-            <button onclick="getMap()">Get Map</button>
+	<div class="jumbotron" id="updatingMap">
+        <button onclick="updateMap()">Update Map</button>    
+        <div id="updateMap"></div>
 	</div>
-
-	
-	<div class="jumbotron">
-        Log:
-		<div type="text" id="logging">
-		</div>
-     </div>
-     
-     <ul class="stately">
+<ul class="stately">
   <li data-state="al" id="al">A</li> 
   <li data-state="ak" id="ak">B</li> 
   <li data-state="ar" id="ar">C</li> 
@@ -107,6 +99,16 @@
   <li data-state="wi" id="wi">x</li> 
   <li data-state="wy" id="wy">y</li> 
 </ul>
+
+	
+	<div class="jumbotron">
+        Log:
+		<div type="text" id="logging">
+		</div>
+     </div>
+     
+     
+
 
 
 
